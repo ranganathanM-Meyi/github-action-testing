@@ -1,1 +1,58 @@
 
+name: ACMOLOGY Builder Webhook - Testing
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+env:
+  TEST_ENVIRONMENT: DEV
+  TEST_BRANCH: main
+
+jobs:
+  webhook-test:
+    name: Test Builder Webhook Trigger
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Display workflow information
+        run: |
+          echo "=================================="
+          echo " ACMOLOGY WEBHOOK TEST"
+          echo "=================================="
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Branch: $GITHUB_REF_NAME"
+          echo "Triggered by: $GITHUB_EVENT_NAME"
+          echo "Environment: $TEST_ENVIRONMENT"
+          echo "=================================="
+
+      - name: Verify workflow dispatch
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "SUCCESS: Workflow triggered through API or manual dispatch."
+          elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            echo "SUCCESS: Workflow triggered through Git push."
+          else
+            echo "Unexpected event: $GITHUB_EVENT_NAME"
+            exit 1
+          fi
+
+      - name: Simulate deployment
+        run: |
+          echo "Starting test deployment..."
+          echo "Environment: $TEST_ENVIRONMENT"
+          echo "Target branch: $TEST_BRANCH"
+          echo "No actual AWS deployment will happen."
+          echo "Test deployment completed successfully."
+
+      - name: Final status
+        run: |
+          echo "=================================="
+          echo " WEBHOOK TEST COMPLETED"
+          echo "=================================="
