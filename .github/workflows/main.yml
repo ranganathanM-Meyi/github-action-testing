@@ -1,7 +1,7 @@
 
 name: ACMOLOGY Builder Webhook - Testing
 
-run-name: ACMOLOGY DEV Webhook Test - ${{ inputs.deployment_command || 'Push Trigger' }}
+run-name: ACMOLOGY Builder Deployment - ${{ inputs.deployment_command || 'Push Trigger' }}
 
 on:
   push:
@@ -11,11 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       deployment_command:
-        description: "Deployment command received from AWS Lambda"
+        description: "Deployment command received from Builder.io"
         required: true
-        type: choice
-        options:
-          - deploy-dev
+        type: string
 
 env:
   TEST_ENVIRONMENT: DEV
@@ -27,6 +25,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       # ------------------------------------------
       # 1. Checkout Repository
       # ------------------------------------------
@@ -53,29 +52,42 @@ jobs:
           echo "=================================="
 
       # ------------------------------------------
-      # 3. Verify Workflow Trigger
+      # 3. Validate Workflow Input
       # ------------------------------------------
 
-      - name: Verify workflow trigger
+      - name: Validate deployment command
         env:
           DEPLOYMENT_COMMAND: ${{ inputs.deployment_command }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            echo "Workflow triggered through API or manual dispatch."
 
-            if [ "$DEPLOYMENT_COMMAND" != "deploy-dev" ]; then
-              echo "ERROR: Invalid deployment command."
+            if [ -z "$DEPLOYMENT_COMMAND" ]; then
+              echo "ERROR: Deployment command is missing."
               exit 1
             fi
 
-            echo "SUCCESS: Deployment command validated."
+            if [ ${#DEPLOYMENT_COMMAND} -gt 200 ]; then
+              echo "ERROR: Deployment command is too long."
+              exit 1
+            fi
+
+            if [[ ! "$DEPLOYMENT_COMMAND" =~ ^[A-Za-z0-9._:/\ -]+$ ]]; then
+              echo "ERROR: Deployment command contains invalid characters."
+              exit 1
+            fi
+
+            echo "SUCCESS: Deployment command received and validated."
 
           elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
-            echo "SUCCESS: Workflow triggered through Git push."
+
+            echo "Workflow triggered through Git push."
+            echo "No deployment command was provided."
 
           else
+
             echo "Unexpected event: $GITHUB_EVENT_NAME"
             exit 1
+
           fi
 
       # ------------------------------------------
@@ -101,9 +113,13 @@ jobs:
       # ------------------------------------------
 
       - name: Final status
+        env:
+          DEPLOYMENT_COMMAND: ${{ inputs.deployment_command }}
         run: |
           echo "=================================="
           echo " WEBHOOK TEST COMPLETED"
           echo "=================================="
           echo "Environment: $TEST_ENVIRONMENT"
+          echo "Deployment command: ${DEPLOYMENT_COMMAND:-Push Trigger}"
           echo "Workflow status: SUCCESS"
+          echo "=================================="
