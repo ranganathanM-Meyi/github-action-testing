@@ -1,12 +1,21 @@
 
 name: ACMOLOGY Builder Webhook - Testing
 
+run-name: DEV Deployment - ${{ inputs.deployment_command || 'Push deployment' }}
+
 on:
   push:
     branches:
       - main
 
   workflow_dispatch:
+    inputs:
+      deployment_command:
+        description: "Select the approved deployment command"
+        required: true
+        type: choice
+        options:
+          - deploy-dev
 
 env:
   TEST_ENVIRONMENT: DEV
@@ -21,7 +30,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate deployment command
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          DEPLOYMENT_COMMAND: ${{ inputs.deployment_command }}
+        run: |
+          if [[ "$DEPLOYMENT_COMMAND" != "deploy-dev" ]]; then
+            echo "ERROR: Invalid deployment command."
+            exit 1
+          fi
+
+          echo "Approved deployment command: $DEPLOYMENT_COMMAND"
+
       - name: Display workflow information
+        env:
+          DEPLOYMENT_COMMAND: ${{ inputs.deployment_command }}
         run: |
           echo "=================================="
           echo " ACMOLOGY WEBHOOK TEST"
@@ -30,6 +53,7 @@ jobs:
           echo "Branch: $GITHUB_REF_NAME"
           echo "Triggered by: $GITHUB_EVENT_NAME"
           echo "Environment: $TEST_ENVIRONMENT"
+          echo "Deployment command: ${DEPLOYMENT_COMMAND:-Not provided}"
           echo "=================================="
 
       - name: Verify workflow dispatch
@@ -44,10 +68,13 @@ jobs:
           fi
 
       - name: Simulate deployment
+        env:
+          DEPLOYMENT_COMMAND: ${{ inputs.deployment_command }}
         run: |
           echo "Starting test deployment..."
           echo "Environment: $TEST_ENVIRONMENT"
           echo "Target branch: $TEST_BRANCH"
+          echo "Deployment command: ${DEPLOYMENT_COMMAND:-Push-triggered test}"
           echo "No actual AWS deployment will happen."
           echo "Test deployment completed successfully."
 
