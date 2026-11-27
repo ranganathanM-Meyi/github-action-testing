@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       deployment_command:
-        description: "Select the approved deployment command"
+        description: "Mandatory approved deployment command"
         required: true
         type: choice
         options:
