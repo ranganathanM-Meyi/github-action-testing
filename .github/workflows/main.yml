@@ -1,7 +1,7 @@
 
 name: ACMOLOGY Builder Webhook - Testing
 
-run-name: DEV Deployment - ${{ inputs.deployment_command || 'Push deployment' }}
+run-name: ACMOLOGY DEV Webhook Test - ${{ inputs.deployment_command || 'Push Trigger' }}
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       deployment_command:
-        description: "Mandatory approved deployment command"
+        description: "Deployment command received from AWS Lambda"
         required: true
         type: choice
         options:
@@ -27,20 +27,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ------------------------------------------
+      # 1. Checkout Repository
+      # ------------------------------------------
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Validate deployment command
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          DEPLOYMENT_COMMAND: ${{ inputs.deployment_command }}
-        run: |
-          if [[ "$DEPLOYMENT_COMMAND" != "deploy-dev" ]]; then
-            echo "ERROR: Invalid deployment command."
-            exit 1
-          fi
-
-          echo "Approved deployment command: $DEPLOYMENT_COMMAND"
+      # ------------------------------------------
+      # 2. Display Workflow Information
+      # ------------------------------------------
 
       - name: Display workflow information
         env:
@@ -56,30 +52,58 @@ jobs:
           echo "Deployment command: ${DEPLOYMENT_COMMAND:-Not provided}"
           echo "=================================="
 
-      - name: Verify workflow dispatch
+      # ------------------------------------------
+      # 3. Verify Workflow Trigger
+      # ------------------------------------------
+
+      - name: Verify workflow trigger
+        env:
+          DEPLOYMENT_COMMAND: ${{ inputs.deployment_command }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            echo "SUCCESS: Workflow triggered through API or manual dispatch."
+            echo "Workflow triggered through API or manual dispatch."
+
+            if [ "$DEPLOYMENT_COMMAND" != "deploy-dev" ]; then
+              echo "ERROR: Invalid deployment command."
+              exit 1
+            fi
+
+            echo "SUCCESS: Deployment command validated."
+
           elif [ "$GITHUB_EVENT_NAME" = "push" ]; then
             echo "SUCCESS: Workflow triggered through Git push."
+
           else
             echo "Unexpected event: $GITHUB_EVENT_NAME"
             exit 1
           fi
 
+      # ------------------------------------------
+      # 4. Simulate Deployment
+      # ------------------------------------------
+
       - name: Simulate deployment
         env:
           DEPLOYMENT_COMMAND: ${{ inputs.deployment_command }}
         run: |
-          echo "Starting test deployment..."
+          echo "=================================="
+          echo " STARTING TEST DEPLOYMENT"
+          echo "=================================="
           echo "Environment: $TEST_ENVIRONMENT"
           echo "Target branch: $TEST_BRANCH"
-          echo "Deployment command: ${DEPLOYMENT_COMMAND:-Push-triggered test}"
+          echo "Deployment command: ${DEPLOYMENT_COMMAND:-Push Trigger}"
+          echo ""
           echo "No actual AWS deployment will happen."
           echo "Test deployment completed successfully."
+
+      # ------------------------------------------
+      # 5. Final Status
+      # ------------------------------------------
 
       - name: Final status
         run: |
           echo "=================================="
           echo " WEBHOOK TEST COMPLETED"
           echo "=================================="
+          echo "Environment: $TEST_ENVIRONMENT"
+          echo "Workflow status: SUCCESS"
